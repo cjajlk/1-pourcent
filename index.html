@@ -1,3 +1,17 @@
+            // Vérification 24h
+            const player = getPlayer();
+            let lastDate = player.streak_last_date;
+            let today = new Date();
+            let todayStr = today.toISOString().slice(0,10);
+            if (lastDate && lastDate !== todayStr) {
+                // Si la date n'est pas aujourd'hui, streak perdu
+                player.streak = 0;
+                player.streak_last_date = todayStr;
+                setPlayer(player);
+                showModal('Votre flamme s\'est éteinte...', 'Le 1% exige de la discipline. Série remise à zéro.', [{label:'Réessayer', action:'fadeTransition(\'game\')'}]);
+                setTimeout(() => fadeTransition('home'), 4200);
+                return;
+            }
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -332,8 +346,27 @@
             status: 'visitor',
             best_score: 0,
             total_attempts: 0,
-            streak: 0
+            streak: 0,
+            streak_last_date: null
         };
+        // Sons
+        const successAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7c7.mp3'); // cloche
+        const failAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_11e7e7e7e7.mp3'); // basse
+                    // Vérification 24h
+                    const player = getPlayer();
+                    let lastDate = player.streak_last_date;
+                    let today = new Date();
+                    let todayStr = today.toISOString().slice(0,10);
+                    if (lastDate && lastDate !== todayStr) {
+                        // Si la date n'est pas aujourd'hui, streak perdu
+                        player.streak = 0;
+                        player.streak_last_date = todayStr;
+                        setPlayer(player);
+                        failAudio.play();
+                        showModal('Votre flamme s\'est éteinte...', 'Le 1% exige de la discipline. Série remise à zéro.', [{label:'Réessayer', action:'fadeTransition(\'game\')'}]);
+                        setTimeout(() => fadeTransition('home'), 4200);
+                        return;
+                    }
         function getPlayer() {
             let p = localStorage.getItem('cj_player');
             if (!p) {
@@ -382,16 +415,33 @@
 
         // --- Member Card ---
         function renderMemberCard(player) {
+            let streakColor = '#ff6600';
+            let streakIcon = '🔥';
+            let streakMsg = '';
+            let shareMsg = '';
+            if (player.streak >= 7) {
+                streakColor = '#00bfff';
+                streakIcon = '💎🔥';
+                streakMsg = '<div style="color:#00bfff;font-weight:700;font-size:1.1rem;margin-bottom:8px;">👑 7 JOURS D\'ÉLITE. Ma discipline est de fer.<br>Qui peut tenir une semaine dans le 1% Club ?</div>';
+                shareMsg = '<button class="share-btn" onclick="shareElite()">Partager mon badge Elite</button>';
+            } else {
+                shareMsg = '<button class="share-btn" onclick="shareRank()">Partager le rang</button>';
+            }
             app.innerHTML = `
                 <div class="elite-logo">👑 The 1% Club</div>
+                <div style="margin-bottom:8px;text-align:center;">
+                    <span style="font-size:2.2rem;color:${streakColor};">${streakIcon}</span>
+                    <span style="font-size:1.3rem;color:${streakColor};font-weight:700;">${player.streak}</span>
+                </div>
+                ${streakMsg}
                 <div class="member-card" id="memberCard">
                     <div class="member-card-content">
                         <div class="member-card-title">Carte de Membre</div>
-                        <div class="member-card-score">Score : ${player.best_score} / 50</div>
+                        <div class="member-card-score">Score : ${player.best_score} / 65</div>
                         <div class="member-card-id">ID : CJ-${Math.floor(Math.random()*100000)}</div>
                     </div>
                 </div>
-                <button class="share-btn" onclick="shareRank()">Partager le rang</button>
+                ${shareMsg}
             `;
             // 3D Card Animation
             const card = document.getElementById('memberCard');
@@ -415,6 +465,13 @@
                     content.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
                 });
             }
+                window.shareElite = function() {
+                    const player = getPlayer();
+                    const text = `💎🔥 7 JOURS D'ÉLITE ! Ma discipline est de fer. Qui peut tenir une semaine dans le 1% Club ? https://cjajlk.github.io/1-pour-cent/`;
+                    navigator.clipboard.writeText(text).then(() => {
+                        showModal('Badge copié !', 'Défi lancé au monde entier.');
+                    });
+                };
         }
 
         // --- Share ---
@@ -434,7 +491,7 @@
                     <div class="metal-disc" id="disc">
                         <span id="tapCount" style="font-size:2.2rem;color:#ffd700;font-weight:bold;">0</span>
                     </div>
-                    <div style="margin-top:32px;text-align:center;color:#fff;font-size:1.1rem;">50 taps en 10 secondes.<br><span style="color:#ffd700;font-weight:600;">Frame-perfect challenge.</span></div>
+                    <div style="margin-top:32px;text-align:center;color:#fff;font-size:1.1rem;">65 taps en 10 secondes.<br><span style="color:#ffd700;font-weight:600;">Chiffre Sacré, Zéro Erreur.</span></div>
                 </div>
             `;
             let taps = 0;
@@ -445,12 +502,13 @@
             const tapCount = document.getElementById('tapCount');
             const progress = document.getElementById('progress');
             // Screen shake
-            function screenShake() {
-                document.body.style.transition = 'transform 0.12s';
-                document.body.style.transform = 'translateX(' + (Math.random()*8-4) + 'px) translateY(' + (Math.random()*8-4) + 'px)';
+            function screenShake(force) {
+                const intensity = force || 1;
+                document.body.style.transition = 'transform 0.08s';
+                document.body.style.transform = 'translateX(' + (Math.random()*12-6)*intensity + 'px) translateY(' + (Math.random()*12-6)*intensity + 'px)';
                 setTimeout(() => {
                     document.body.style.transform = '';
-                }, 120);
+                }, 80);
             }
             // Progress bar
             function animateProgress() {
@@ -460,11 +518,29 @@
                     let elapsed = Date.now() - startTime;
                     let percent = Math.max(0, 1 - elapsed/10000);
                     progress.style.width = (percent*100) + 'vw';
+                    // Accélération visuelle
+                    if (taps >= 50) {
+                        progress.style.background = percent < 0.2 ? 'linear-gradient(90deg, #ff0000 0%, #ffd700 100%)' : 'linear-gradient(90deg, #ffd700 0%, #fffbe6 100%)';
+                        progress.style.animation = 'blinkRed 0.15s infinite';
+                    } else if (taps >= 40) {
+                        progress.style.background = 'linear-gradient(90deg, #ffd700 0%, #ff0000 100%)';
+                        progress.style.animation = 'blinkRed 0.3s infinite';
+                    } else {
+                        progress.style.background = 'linear-gradient(90deg, #ffd700 0%, #fffbe6 100%)';
+                        progress.style.animation = '';
+                    }
                     if (percent > 0) {
                         progressAnim = requestAnimationFrame(step);
                     }
                 }
                 step();
+            }
+            // Ajout animation CSS
+            if (!document.getElementById('blinkRedStyle')) {
+                const style = document.createElement('style');
+                style.id = 'blinkRedStyle';
+                style.innerHTML = `@keyframes blinkRed { 0%{filter:brightness(1);} 50%{filter:brightness(2) drop-shadow(0 0 8px red);} 100%{filter:brightness(1);} }`;
+                document.head.appendChild(style);
             }
             disc.addEventListener('pointerdown', e => {
                 e.preventDefault();
@@ -473,27 +549,43 @@
                     timer = setTimeout(endGame, 10000);
                     animateProgress();
                 }
-                if (taps < 50) {
+                // Zéro erreur : échec immédiat si >65
+                if (taps >= 65) {
                     taps++;
+                    clearTimeout(timer);
+                    showModal('Zéro Erreur !', 'Tu as dépassé le Chiffre Sacré (65). Échec immédiat.', [{label:'Réessayer', action:'fadeTransition(\'game\')'}]);
+                    setTimeout(() => fadeTransition('home'), 4200);
+                    return;
+                }
+                taps++;
+                // Compteur fantôme : cacher le compteur après 50
+                if (taps > 50) {
+                    tapCount.style.visibility = 'hidden';
+                } else {
                     tapCount.textContent = taps;
-                    disc.classList.add('pressed');
-                    setTimeout(() => disc.classList.remove('pressed'), 50);
-                    // Floating Text
+                }
+                disc.classList.add('pressed');
+                setTimeout(() => disc.classList.remove('pressed'), 50);
+                // Floating Text
+                if (taps <= 50) {
                     const float = document.createElement('div');
                     float.className = 'floating-text';
                     float.textContent = taps;
                     disc.appendChild(float);
                     setTimeout(() => float.remove(), 1000);
-                    // Floating +1
-                    const plus = document.createElement('div');
-                    plus.className = 'floating-plus';
-                    plus.textContent = '+1';
-                    disc.appendChild(plus);
-                    setTimeout(() => plus.remove(), 800);
-                    // Screen shake
-                    screenShake();
                 }
-                if (taps === 50) {
+                // Floating +1
+                const plus = document.createElement('div');
+                plus.className = 'floating-plus';
+                plus.textContent = '+1';
+                disc.appendChild(plus);
+                setTimeout(() => plus.remove(), 800);
+                // Shake accéléré
+                let shakeForce = 1;
+                if (taps >= 50) shakeForce = 2.5;
+                else if (taps >= 40) shakeForce = 1.5;
+                screenShake(shakeForce);
+                if (taps === 65) {
                     clearTimeout(timer);
                     endGame();
                 }
@@ -508,21 +600,24 @@
                 if (taps > player.best_score) {
                     player.best_score = taps;
                 }
-                if (taps === 50 && elapsed <= 10) {
+                if (taps === 65 && elapsed <= 10) {
                     player.status = 'member';
                     player.streak++;
+                    setPlayer(player);
+                    successAudio.play();
                 } else {
                     player.streak = 0;
+                    setPlayer(player);
+                    failAudio.play();
                 }
-                setPlayer(player);
                 // Provocation
                 let msg = '';
-                if (taps < 10) msg = 'Indigne du Club.';
-                else if (taps >= 45 && taps < 50) msg = "L'échec à la porte du paradis.";
-                else if (taps === 50 && elapsed <= 10) msg = 'Bienvenue dans le Club 👑!';
-                else msg = `Score : ${taps} / 50`;
+                if (taps < 15) msg = 'Indigne du Club.';
+                else if (taps >= 60 && taps < 65) msg = "L'échec à la porte du paradis.";
+                else if (taps === 65 && elapsed <= 10) msg = 'Bienvenue dans le Club 👑!';
+                else msg = `Score : ${taps} / 65`;
                 // Red flash if time out
-                if (taps < 50 && elapsed >= 10) {
+                if (taps < 65 && elapsed >= 10) {
                     const provos = [
                         'Trop lent !',
                         'Même mon grand-père fait mieux.',
@@ -539,8 +634,8 @@
                     setTimeout(() => fadeTransition('home'), 4200);
                     return;
                 }
-                // Confetti if 50/50
-                if (taps === 50 && elapsed <= 10) {
+                // Confetti if 65/65
+                if (taps === 65 && elapsed <= 10) {
                     confettiRain();
                     showModal('Bravo !', 'Bienvenue dans le Club 👑!', [{label:'Partager mon rang', action:'shareRank()'}]);
                     setTimeout(() => fadeTransition('member'), 4200);
@@ -575,11 +670,22 @@
         // --- Home ---
         function renderHome() {
             const player = getPlayer();
+            // Flamme fidélité
+            let streakColor = '#ff6600';
+            let streakIcon = '🔥';
+            if (player.streak >= 7) {
+                streakColor = '#00bfff';
+                streakIcon = '💎🔥';
+            }
             app.innerHTML = `
                 <div class="elite-logo">👑 The 1% Club</div>
-                <div class="desc">Défi : 50 taps en 10 secondes.<br>Seuls les meilleurs entrent.<br><span style="color:#ffd700;font-weight:600;">Pro Edition</span></div>
+                <div style="margin-bottom:8px;text-align:center;">
+                    <span style="font-size:2.2rem;color:${streakColor};">${streakIcon}</span>
+                    <span style="font-size:1.3rem;color:${streakColor};font-weight:700;">${player.streak}</span>
+                </div>
+                <div class="desc">Défi : 65 taps en 10 secondes.<br>Seuls les meilleurs entrent.<br><span style="color:#ffd700;font-weight:600;">Pro Edition</span></div>
                 <button class="pulse-btn" onclick="fadeTransition('game')">Jouer</button>
-                <div style="margin-top:32px;color:#fff;font-size:1rem;text-align:center;">Meilleur score : <span style="color:#ffd700;font-weight:600;">${player.best_score}</span> / 50<br>Tentatives : <span style="color:#ffd700;font-weight:600;">${player.total_attempts}</span></div>
+                <div style="margin-top:32px;color:#fff;font-size:1rem;text-align:center;">Meilleur score : <span style="color:#ffd700;font-weight:600;">${player.best_score}</span> / 65<br>Tentatives : <span style="color:#ffd700;font-weight:600;">${player.total_attempts}</span></div>
             `;
         }
 
