@@ -352,21 +352,7 @@
         // Sons
         const successAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7c7.mp3'); // cloche
         const failAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_11e7e7e7e7.mp3'); // basse
-                    // Vérification 24h
-                    const player = getPlayer();
-                    let lastDate = player.streak_last_date;
-                    let today = new Date();
-                    let todayStr = today.toISOString().slice(0,10);
-                    if (lastDate && lastDate !== todayStr) {
-                        // Si la date n'est pas aujourd'hui, streak perdu
-                        player.streak = 0;
-                        player.streak_last_date = todayStr;
-                        setPlayer(player);
-                        failAudio.play();
-                        showModal('Votre flamme s\'est éteinte...', 'Le 1% exige de la discipline. Série remise à zéro.', [{label:'Réessayer', action:'fadeTransition(\'game\')'}]);
-                        setTimeout(() => fadeTransition('home'), 4200);
-                        return;
-                    }
+        
         function getPlayer() {
             let p = localStorage.getItem('cj_player');
             if (!p) {
@@ -402,10 +388,11 @@
 
         // --- Modal ---
         function showModal(title, msg, actions = []) {
+            let buttons = actions.map(a => `<button class="pulse-btn" onclick=\"${a.action}\">${a.label}</button>`).join('');
             modal.innerHTML = `
                 <div class="modal-title">${title}</div>
                 <div class="modal-msg">${msg}</div>
-                ${actions.map(a => `<button class="pulse-btn" onclick="${a.action}">${a.label}</button>`).join('')}
+                <div class="modal-actions">${buttons}</div>
             `;
             modal.classList.add('show');
             setTimeout(() => {
