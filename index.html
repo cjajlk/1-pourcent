@@ -117,6 +117,15 @@
             60% { opacity: 0.85; transform: translate(-50%, -80%) scale(1.15); }
             100% { opacity: 0; transform: translate(-50%, -120%) scale(1.2); }
         }
+        @keyframes ringExpand {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; border-color: #ffd700; }
+            100% { transform: translate(-50%, -50%) scale(3); opacity: 0; border-color: transparent; }
+        }
+        @keyframes motivPop {
+            0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+            50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+            100% { opacity: 0; transform: translateX(-50%) scale(1); }
+        }
         .glass-modal {
             position: fixed;
             left: 50%;
@@ -172,6 +181,17 @@
             transition: background 0.2s;
             touch-action: manipulation;
             display: block;
+        }
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            align-items: center;
+        }
+        .modal-actions .pulse-btn {
+            width: 100%;
+            margin: 0;
         }
         @keyframes pulse {
             0% { box-shadow: 0 2px 8px #ffd70044; }
@@ -303,8 +323,8 @@
         }
         .confetti-piece {
             position: absolute;
-            width: 12px;
-            height: 12px;
+            width: 28px;
+            height: 28px;
             background: linear-gradient(135deg, #ffd700 0%, #fffbe6 100%);
             border-radius: 50%;
             box-shadow: 0 0 16px #ffd700cc;
@@ -347,7 +367,8 @@
             best_score: 0,
             total_attempts: 0,
             streak: 0,
-            streak_last_date: null
+            streak_last_date: null,
+            wins: 0
         };
         
         // Sons avec Web Audio API
@@ -402,6 +423,9 @@
             }
             if (!player.hasOwnProperty('streak_last_date')) {
                 player.streak_last_date = null;
+            }
+            if (!player.hasOwnProperty('wins')) {
+                player.wins = 0;
             }
             return player;
         }
@@ -469,6 +493,7 @@
                     <div class="member-card-content">
                         <div class="member-card-title">Carte de Membre</div>
                         <div class="member-card-score">Score : ${player.best_score} / 65</div>
+                        <div class="member-card-score" style="margin-top:12px;color:#00ff00;">🏆 Victoires : ${player.wins}</div>
                         <div class="member-card-id">ID : CJ-${Math.floor(Math.random()*100000)}</div>
                     </div>
                 </div>
@@ -520,7 +545,7 @@
                 <div class="progress-bar"><div class="progress" id="progress"></div></div>
                 <div class="center">
                     <div class="metal-disc" id="disc">
-                        <span id="tapCount" style="font-size:2.2rem;color:#ffd700;font-weight:bold;">0</span>
+                        <span id="tapCount" style="font-size:3.8rem;color:#ffd700;font-weight:bold;text-shadow:0 0 12px #ffd700, 0 4px 8px rgba(0,0,0,0.5);">0</span>
                     </div>
                     <div style="margin-top:32px;text-align:center;color:#fff;font-size:1.1rem;">65 taps en 10 secondes.<br><span style="color:#ffd700;font-weight:600;">Chiffre Sacré, Zéro Erreur.</span></div>
                 </div>
@@ -584,11 +609,14 @@
                 if (taps >= 65) {
                     taps++;
                     clearTimeout(timer);
-                    showModal('Zéro Erreur !', 'Tu as dépassé le Chiffre Sacré (65). Échec immédiat.', [{label:'Réessayer', action:'fadeTransition(\'game\')'}]);
-                    setTimeout(() => fadeTransition('home'), 4200);
-                    return;
+                    showModal('Zéro Erreur !', 'Tu as dépassé le Chiffre Sacré (65). Échec immédiat.', [
+                        {label:'Réessayer', action:'fadeTransition(\'game\')'},
+                        {label:'Retour au menu', action:'fadeTransition(\'home\')'}
+                    ]);
                 }
                 taps++;
+                // Tap feedback sonore
+                playSuccessSound();
                 // Compteur fantôme : cacher le compteur après 50
                 if (taps > 50) {
                     tapCount.style.visibility = 'hidden';
@@ -597,6 +625,20 @@
                 }
                 disc.classList.add('pressed');
                 setTimeout(() => disc.classList.remove('pressed'), 50);
+                // Ring effect (onde expansile)
+                const ring = document.createElement('div');
+                ring.style.position = 'absolute';
+                ring.style.left = '50%';
+                ring.style.top = '50%';
+                ring.style.transform = 'translate(-50%, -50%)';
+                ring.style.width = '40px';
+                ring.style.height = '40px';
+                ring.style.borderRadius = '50%';
+                ring.style.border = '3px solid #ffd700';
+                ring.style.pointerEvents = 'none';
+                ring.style.animation = 'ringExpand 0.6s ease-out forwards';
+                disc.appendChild(ring);
+                setTimeout(() => ring.remove(), 600);
                 // Floating Text
                 if (taps <= 50) {
                     const float = document.createElement('div');
@@ -611,6 +653,32 @@
                 plus.textContent = '+1';
                 disc.appendChild(plus);
                 setTimeout(() => plus.remove(), 800);
+                // Messages motivants aux seuils clés
+                const motivationalMessages = {
+                    10: ['Ça chauffe! 🔥', 'C\'est une bonne start!'],
+                    20: ['Halfway! Continue! 💪', 'You got this!'],
+                    30: ['Halfway plus! 🚀', 'Impressionnant!'],
+                    40: ['Stretch the limit! ⚡', 'Plus haut!'],
+                    50: ['INHUMAIN! 🤯', 'Tue-le!'],
+                    60: ['PRESQUE! 💥', 'Ultra rare!']
+                };
+                if (motivationalMessages[taps]) {
+                    const msg = motivationalMessages[taps][Math.floor(Math.random() * motivationalMessages[taps].length)];
+                    const motiv = document.createElement('div');
+                    motiv.style.position = 'fixed';
+                    motiv.style.left = '50%';
+                    motiv.style.top = '30%';
+                    motiv.style.transform = 'translateX(-50%)';
+                    motiv.style.fontSize = '2rem';
+                    motiv.style.fontWeight = 'bold';
+                    motiv.style.color = '#ff00ff';
+                    motiv.style.textShadow = '0 0 12px #ff00ff, 0 2px 4px rgba(0,0,0,0.5)';
+                    motiv.style.pointerEvents = 'none';
+                    motiv.textContent = msg;
+                    motiv.style.animation = 'motivPop 0.8s cubic-bezier(.77,0,.18,1) forwards';
+                    document.body.appendChild(motiv);
+                    setTimeout(() => motiv.remove(), 800);
+                }
                 // Shake accéléré
                 let shakeForce = 1;
                 if (taps >= 50) shakeForce = 2.5;
@@ -634,6 +702,7 @@
                 if (taps === 65 && elapsed <= 10) {
                     player.status = 'member';
                     player.streak++;
+                    player.wins++;
                     setPlayer(player);
                     playSuccessSound();
                 } else {
@@ -643,8 +712,12 @@
                 }
                 // Provocation
                 let msg = '';
-                if (taps < 15) msg = 'Indigne du Club.';
+                if (taps < 15) msg = 'Digne des mouches, pas du 1%.';
+                else if (taps >= 15 && taps < 30) msg = 'Bon début. Mais très insuffisant.';
+                else if (taps >= 30 && taps < 45) msg = 'Pas mal. Continue à t\'entraîner.';
+                else if (taps >= 45 && taps < 60) msg = 'Impressionnant! Presque là.';
                 else if (taps >= 60 && taps < 65) msg = "L'échec à la porte du paradis.";
+                else if (taps === 65 && elapsed <= 10) msg = 'CHAMPION! Bienvenue au Club 👑!';
                 else if (taps === 65 && elapsed <= 10) msg = 'Bienvenue dans le Club 👑!';
                 else msg = `Score : ${taps} / 65`;
                 // Red flash if time out
@@ -661,36 +734,47 @@
                     flash.textContent = provomsg;
                     document.body.appendChild(flash);
                     setTimeout(() => flash.remove(), 700);
-                    showModal('Résultat', provomsg, [{label:'Réessayer', action:'fadeTransition(\'game\')'}]);
-                    setTimeout(() => fadeTransition('home'), 4200);
+                    showModal('Résultat', provomsg, [
+                        {label:'Réessayer', action:'fadeTransition(\'game\')'},
+                        {label:'Retour au menu', action:'fadeTransition(\'home\')'}
+                    ]);
                     return;
                 }
                 // Confetti if 65/65
                 if (taps === 65 && elapsed <= 10) {
                     confettiRain();
-                    showModal('Bravo !', 'Bienvenue dans le Club 👑!', [{label:'Partager mon rang', action:'shareRank()'}]);
-                    setTimeout(() => fadeTransition('member'), 4200);
+                    showModal('Bravo !', 'Bienvenue dans le Club 👑!', [
+                        {label:'Voir ma carte', action:'fadeTransition(\'member\')'},
+                        {label:'Retour au menu', action:'fadeTransition(\'home\')'}
+                    ]);
                     return;
                 }
-                showModal('Résultat', msg, [{label:'Réessayer', action:'fadeTransition(\'game\')'}]);
-                setTimeout(() => {
-                    if (player.status === 'member') {
-                        fadeTransition('member');
-                    } else {
-                        fadeTransition('home');
-                    }
-                }, 4200);
+                showModal('Résultat', msg, [
+                    {label:'Réessayer', action:'fadeTransition(\'game\')'},
+                    {label:'Retour au menu', action:'fadeTransition(\'home\')'}
+                ]);
             }
             // Confetti
             function confettiRain() {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti';
-                for (let i=0; i<48; i++) {
+                const colors = ['#ffd700', '#00bfff', '#ff00ff', '#00ff00', '#ff0000', '#fffbe6'];
+                const emojis = ['👑', '🔥', '💎', '⭐', '✨', '🚀'];
+                for (let i=0; i<80; i++) {
                     const piece = document.createElement('div');
                     piece.className = 'confetti-piece';
                     piece.style.left = Math.random()*100 + 'vw';
                     piece.style.top = Math.random()*-40 + 'px';
-                    piece.style.background = 'linear-gradient(135deg, #ffd700 0%, #fffbe6 100%)';
+                    const color = colors[Math.floor(Math.random()*colors.length)];
+                    const emoji = emojis[Math.floor(Math.random()*emojis.length)];
+                    piece.style.background = color;
+                    piece.style.fontSize = '1.5rem';
+                    piece.textContent = emoji;
+                    piece.style.display = 'flex';
+                    piece.style.alignItems = 'center';
+                    piece.style.justifyContent = 'center';
+                    piece.style.color = color;
+                    piece.style.textShadow = `0 0 8px ${color}`;
                     confetti.appendChild(piece);
                 }
                 document.body.appendChild(confetti);
@@ -716,7 +800,7 @@
                 </div>
                 <div class="desc">Défi : 65 taps en 10 secondes.<br>Seuls les meilleurs entrent.<br><span style="color:#ffd700;font-weight:600;">Pro Edition</span></div>
                 <button class="pulse-btn" onclick="fadeTransition('game')">Jouer</button>
-                <div style="margin-top:32px;color:#fff;font-size:1rem;text-align:center;">Meilleur score : <span style="color:#ffd700;font-weight:600;">${player.best_score}</span> / 65<br>Tentatives : <span style="color:#ffd700;font-weight:600;">${player.total_attempts}</span></div>
+                <div style="margin-top:32px;color:#fff;font-size:1rem;text-align:center;">Meilleur score : <span style="color:#ffd700;font-weight:600;">${player.best_score}</span> / 65<br>Tentatives : <span style="color:#ffd700;font-weight:600;">${player.total_attempts}</span><br>Victoires : <span style="color:#00ff00;font-weight:600;">🏆 ${player.wins}</span></div>
             `;
         }
 
