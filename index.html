@@ -386,7 +386,24 @@
                 localStorage.setItem('cj_player', JSON.stringify(defaultPlayer));
                 return {...defaultPlayer};
             }
-            return JSON.parse(p);
+            let player = JSON.parse(p);
+            // Validation : réinitialiser si données corrompues
+            if (!player.hasOwnProperty('streak') || player.streak < 0) {
+                player.streak = 0;
+            }
+            if (!player.hasOwnProperty('best_score')) {
+                player.best_score = 0;
+            }
+            if (!player.hasOwnProperty('total_attempts')) {
+                player.total_attempts = 0;
+            }
+            if (!player.hasOwnProperty('status')) {
+                player.status = 'visitor';
+            }
+            if (!player.hasOwnProperty('streak_last_date')) {
+                player.streak_last_date = null;
+            }
+            return player;
         }
         function setPlayer(obj) {
             localStorage.setItem('cj_player', JSON.stringify(obj));
